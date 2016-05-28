@@ -13,13 +13,17 @@
 #define IOWAIT 6
 #define DONE 7
 
-#define PHYSICAL_MEM_MAX 8
-#define VIRTUAL_MEM_MAX 16
+//#define PHYSICAL_MEM_MAX 8
+//#define VIRTUAL_MEM_MAX 16
 
 using namespace std;
 
+const int PHYSICAL_MEM_MAX = 8;
+const int VIRTUAL_MEM_MAX = 16;
 int totalRunTime = 0;
 int initialJobNumber = 1;
+int currentFrame = 0;
+int vmIterator = 0;
 bool done = false;
 
 class job {
@@ -30,11 +34,11 @@ class job {
         int cpuTime;
         int mem;
         int state;
-        job(int cpu, int mem) {
+        job(int cpu, int memory) {
             jobNum = initialJobNumber;
             arrTime = totalRunTime;
             cpuTime = cpu;
-            mem = mem;
+            mem = memory;
         }
 
 };
@@ -63,24 +67,24 @@ class memoryManager {
         //it holds
         struct frame {
             int containedJob;
-            int pageNum;
+            //int pageNum;
         };
 
         //page struct just contains the frame number it
         //occupies
         struct page {
             int containedJob;
-            int frameNum;
+            //int frameNum;
         };
 
         frame frameContainer[PHYSICAL_MEM_MAX];
         page pageContainer[VIRTUAL_MEM_MAX];
 
         void initMem() {
-            for (int i=0; i<PHYSICAL_MEM_MAX; i++) {
+            for (int i=0; i<VIRTUAL_MEM_MAX; i++) {
                 pageContainer[i].containedJob = 0;
             }
-            for (int j=0; j<VIRTUAL_MEM_MAX; j++) {
+            for (int j=0; j<PHYSICAL_MEM_MAX; j++) {
                 frameContainer[j].containedJob = 0;
             }
         }
@@ -105,7 +109,7 @@ class memoryManager {
             }
             cout << "Frame Report:" << endl;
             for (int j=0; j<PHYSICAL_MEM_MAX; j++) {
-                cout << "\tFrame " << j << ":" << pageContainer[j].containedJob << endl;
+                cout << "\tFrame " << j << ":" << frameContainer[j].containedJob << endl;
             }
         }
 
@@ -151,6 +155,22 @@ class memoryManager {
             }
         }
 
+        void memorySwap() {
+
+            std::swap(pageContainer[vmIterator].containedJob, frameContainer[currentFrame].containedJob);
+            if(vmIterator == VIRTUAL_MEM_MAX) {
+                vmIterator = -1;
+            }
+            vmIterator++;
+        }
+
+        void isPageFault() {
+            if (frameContainer[currentFrame].containedJob == 0) {
+                cout << "PAGE FAULT :^(" << endl;
+                memorySwap();
+            }
+        }
+
         void tick() {
 
             int userInput = 0;
@@ -162,12 +182,14 @@ class memoryManager {
             cout << "Press 1 to continue running, press any other number to quit. " << endl;
             cin >> userInput;
             if (userInput==1){
+                isPageFault();
                 runJob();
-
-            }else{
+            }
+            else {
                 cout << "Terminating" << endl;
                 done = true;
             }
+            currentFrame++;
             totalRunTime++;
         }
 
